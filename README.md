@@ -20,7 +20,7 @@ the build order.
 | `game/index.html` — island UI + game | done |
 | Menu-bar app, notch panel, transparent web view | done |
 | `HookInstaller` — merge/unmerge `~/.claude/settings.json` | done |
-| `EventServer` — localhost listener for hook events | not started |
+| `EventServer` — localhost listener for hook events | done |
 | `SessionRouter` — multi-session state, debouncing | not started |
 | `FocusReturner` — exact Terminal/iTerm tab | not started |
 | `install.sh` / release workflow | written, untested end to end |
