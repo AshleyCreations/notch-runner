@@ -21,9 +21,17 @@ the build order.
 | Menu-bar app, notch panel, transparent web view | done |
 | `HookInstaller` — merge/unmerge `~/.claude/settings.json` | done |
 | `EventServer` — localhost listener for hook events | done |
-| `SessionRouter` — multi-session state, debouncing | not started |
+| `SessionRouter` — multi-session state, debouncing | done |
 | `FocusReturner` — exact Terminal/iTerm tab | not started |
 | `install.sh` / release workflow | written, untested end to end |
+
+## Tests
+
+```bash
+app/Tests/run.sh
+```
+
+No Xcode needed — the suites compile against the Swift toolchain alone.
 
 ## Try the game now
 

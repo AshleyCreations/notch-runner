@@ -31,13 +31,12 @@ final class IslandPanel: NSPanel {
         webView.onIslandState = { [weak self] _, interactive in
             self?.ignoresMouseEvents = !interactive
         }
+        // onReturnFocus is owned by AppDelegate: it needs the SessionRouter to
+        // turn a session id into the terminal to activate.
         webView.onWantsKeyboard = { [weak self] in
             guard Settings.shared.takesKeyboard else { return }
             self?.makeKey()
             NSApp.activate(ignoringOtherApps: true)
-        }
-        webView.onReturnFocus = { [weak self] _ in
-            self?.resignKey()
         }
     }
 
