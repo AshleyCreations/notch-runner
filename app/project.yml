@@ -7,9 +7,10 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: ${MARKETING_VERSION:-0.1.0}
+    # The release workflow overrides MARKETING_VERSION with the git tag.
+    MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: 1
-    SWIFT_VERSION: 5.9
+    SWIFT_VERSION: "5.0"
     ARCHS: "arm64 x86_64"
     ONLY_ACTIVE_ARCH: NO
     CODE_SIGN_IDENTITY: "-"
@@ -22,6 +23,17 @@ targets:
     platform: macOS
     sources:
       - path: NotchRunner
+        excludes:
+          - Resources/game
+          - Resources/notch-runner-hook.sh
+      # A folder reference, not a group: the web view looks the page up with
+      # subdirectory "game", which only works if the folder survives into the
+      # bundle instead of being flattened into Resources.
+      - path: NotchRunner/Resources/game
+        type: folder
+      # install.sh copies this out of the bundle, so it has to be a resource.
+      - path: NotchRunner/Resources/notch-runner-hook.sh
+        buildPhase: resources
     info:
       path: Info.plist
       properties:
@@ -36,12 +48,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.ashleycreations.notchrunner
-        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+    scheme:
+      testTargets: []
     preBuildScripts:
-      # One source of truth: the game lives at /game and is copied in at build time.
-      - name: Copy game/index.html into Resources
+      # Keeps a local Xcode build in step with /game without re-running the
+      # staging script by hand. CI stages before generating the project.
+      - name: Stage resources
         basedOnDependencyAnalysis: false
-        script: |
-          mkdir -p "$SRCROOT/NotchRunner/Resources/game"
-          cp "$SRCROOT/../game/index.html" "$SRCROOT/NotchRunner/Resources/game/index.html"
-          cp "$SRCROOT/../hooks/notch-runner-hook.sh" "$SRCROOT/NotchRunner/Resources/notch-runner-hook.sh"
+        script: '"$SRCROOT/stage-resources.sh"'

@@ -14,14 +14,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Run the tests
+        run: app/Tests/run.sh
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      # The project spec references the staged folder, so this has to happen
+      # before the project is generated.
+      - name: Stage resources
+        run: app/stage-resources.sh
+
       - name: Generate the Xcode project
         working-directory: app
-        env:
-          MARKETING_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.0.0' }}
         run: xcodegen generate
+
+      - name: Work out the version
+        id: version
+        run: |
+          ref="${{ github.ref_name }}"
+          echo "marketing=${ref#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build (universal, ad-hoc signed)
         working-directory: app
@@ -29,9 +41,24 @@ jobs:
           xcodebuild -project NotchRunner.xcodeproj \
             -scheme NotchRunner -configuration Release \
             -derivedDataPath build \
+            MARKETING_VERSION="${{ steps.version.outputs.marketing }}" \
             ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
             build
+
+      - name: Check the bundle
+        working-directory: app
+        run: |
+          APP=build/Build/Products/Release/NotchRunner.app
+          echo "--- architectures"
+          lipo -info "$APP/Contents/MacOS/NotchRunner"
+          echo "--- the game must survive as a folder, not be flattened"
+          test -f "$APP/Contents/Resources/game/index.html"
+          echo "--- install.sh copies the hook out of here"
+          test -f "$APP/Contents/Resources/notch-runner-hook.sh"
+          echo "--- menu-bar only"
+          /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
 
       - name: Zip
         working-directory: app

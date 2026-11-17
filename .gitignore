@@ -6,4 +6,7 @@ build/
 dist/
 *.zip
 xcuserdata/
-app/NotchRunner/Resources/game/index.html
+# Staged by app/stage-resources.sh from /game and /hooks.
+app/NotchRunner/Resources/game/
+app/NotchRunner/Resources/notch-runner-hook.sh
+app/Info.plist
