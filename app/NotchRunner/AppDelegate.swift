@@ -36,8 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.webView.onReturnFocus = { [weak self] sessionId in
             self?.panel.resignKey()
             guard let sessionId, let session = self?.router.session(for: sessionId) else { return }
-            // TODO: FocusReturner.focus(session) — exact Terminal/iTerm tab.
-            NSLog("notch-runner: would return focus to \(session.term ?? "?") \(session.tty ?? "?")")
+            FocusReturner.focus(session)
         }
     }
 
@@ -48,6 +47,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startEventServer() {
         router = SessionRouter()
         router.send = { [weak self] event in self?.panel.webView.send(event) }
+        router.frontmostBundleId = {
+            // Our own panel never activates before this is read, so this is the
+            // terminal (or whatever the user was actually in).
+            NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        }
 
         server = EventServer()
         server.onEvent = { [weak self] event in

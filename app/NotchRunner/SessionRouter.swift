@@ -11,6 +11,9 @@ struct Session {
     var termSession: String?
     var itermSession: String?
     var cwd: String?
+    /// Whatever was frontmost when the prompt arrived — the last-resort target
+    /// for terminals we cannot drive down to a tab.
+    var frontmostBundleId: String?
     var isWorking: Bool
 }
 
@@ -26,6 +29,9 @@ final class SessionRouter {
 
     /// Emits the bridge events the web view understands.
     var send: (([String: Any]) -> Void)?
+    /// Supplied by AppDelegate; kept as a closure so the router stays free of
+    /// AppKit and can be tested on its own.
+    var frontmostBundleId: (() -> String?)?
 
     private(set) var sessions: [String: Session] = [:]
     private var stuckTimers: [String: DispatchWorkItem] = [:]
@@ -56,7 +62,7 @@ final class SessionRouter {
 
         var session = sessions[id] ?? Session(id: id, startedAt: Date(), tty: nil, term: nil,
                                               termSession: nil, itermSession: nil, cwd: nil,
-                                              isWorking: false)
+                                              frontmostBundleId: nil, isWorking: false)
         session.startedAt = Date()
         session.isWorking = true
         // The terminal can legitimately change between prompts, so refresh it.
@@ -65,6 +71,11 @@ final class SessionRouter {
         session.termSession = event.termSession?.isEmpty == false ? event.termSession : session.termSession
         session.itermSession = event.itermSession?.isEmpty == false ? event.itermSession : session.itermSession
         session.cwd = event.hook?.cwd ?? session.cwd
+        // Only on the first prompt of a turn: once our own panel takes the
+        // keyboard, the frontmost app is us, not the terminal.
+        if !session.isWorking || session.frontmostBundleId == nil {
+            session.frontmostBundleId = frontmostBundleId?() ?? session.frontmostBundleId
+        }
         sessions[id] = session
 
         armStuckTimer(id)

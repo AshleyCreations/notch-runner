@@ -22,7 +22,7 @@ the build order.
 | `HookInstaller` — merge/unmerge `~/.claude/settings.json` | done |
 | `EventServer` — localhost listener for hook events | done |
 | `SessionRouter` — multi-session state, debouncing | done |
-| `FocusReturner` — exact Terminal/iTerm tab | not started |
+| `FocusReturner` — exact Terminal/iTerm tab | done, untested on a real screen |
 | `install.sh` / release workflow | written, untested end to end |
 
 ## Tests

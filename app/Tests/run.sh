@@ -12,10 +12,13 @@ status=0
 for suite in */; do
   name="${suite%/}"
   echo "== $name"
-  swiftc -o "$OUT/$name" \
-    ../NotchRunner/EventServer.swift \
-    ../NotchRunner/SessionRouter.swift \
-    "$name/main.swift"
+  # Each suite names the sources it needs in sources.txt. Written for the
+  # bash 3.2 that ships with macOS, so no mapfile and no array expansion tricks.
+  srcs=""
+  while IFS= read -r line; do
+    [ -n "$line" ] && srcs="$srcs ../NotchRunner/$line"
+  done < "$name/sources.txt"
+  swiftc -o "$OUT/$name" $srcs "$name/main.swift"
   "$OUT/$name" || status=1
 done
 exit $status
