@@ -321,7 +321,7 @@ Use `set -euo pipefail`, keep it idempotent, and add `--version vX.Y.Z` support.
 
 - XcodeGen `project.yml`: macOS 14 target, `LSUIElement = YES`, universal binary, bundle ID `io.github.<owner>.notchrunner`, version from the git tag.
 - A build phase copies `/game/index.html` into the app's Resources, so there's one source of truth.
-- The owner already has GitHub Actions. The release workflow runs on `macos-14`: `brew install xcodegen` → `xcodegen` → `xcodebuild -scheme NotchRunner -configuration Release ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-"` (ad-hoc sign) → `ditto -c -k --keepParent NotchRunner.app NotchRunner.zip` → upload it to the GitHub Release for tag `v*`.
+- The owner already has GitHub Actions. The release workflow runs on `macos-15` (`macos-14` was retired on 2 Nov 2026): `brew install xcodegen` → `xcodegen` → `xcodebuild -scheme NotchRunner -configuration Release ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-"` (ad-hoc sign) → `ditto -c -k --keepParent NotchRunner.app NotchRunner.zip` → upload it to the GitHub Release for tag `v*`.
 - Later, add Developer ID signing and notarisation through repo secrets when available.
 
 ---
