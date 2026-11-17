@@ -1,0 +1,9 @@
+.DS_Store
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+build/
+dist/
+*.zip
+xcuserdata/
+app/NotchRunner/Resources/game/index.html

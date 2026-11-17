@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: app
+        env:
+          MARKETING_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.0.0' }}
+        run: xcodegen generate
+
+      - name: Build (universal, ad-hoc signed)
+        working-directory: app
+        run: |
+          xcodebuild -project NotchRunner.xcodeproj \
+            -scheme NotchRunner -configuration Release \
+            -derivedDataPath build \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Zip
+        working-directory: app
+        run: ditto -c -k --keepParent build/Build/Products/Release/NotchRunner.app NotchRunner.zip
+
+      - name: Attach to the release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/NotchRunner.zip
+          generate_release_notes: true

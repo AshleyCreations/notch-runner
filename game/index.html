@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notch Runner</title>
+<!--
+  Notch Runner — island UI + game.
+  Runs inside the macOS app's transparent WKWebView (see NOTCH_RUNNER_SPEC.md),
+  or standalone in a browser with a dev harness for testing.
+  No external dependencies: fonts fall back to the system stack so it works offline.
+-->
+<style>
+:root{
+  --island:#000; --fg:#f2f1ec; --muted:#8b8880; --dim:#5b5953; --ground:#3a3936; --obstacle:#cfcdc6;
+  --accent:#f5b841;          /* Bit's amber */
+  --accent-2:#ffd88a;
+  --ok:#7fc49a;
+  --g1:#f5b841; --g2:#ff9a6b; --g3:#b48cf2; --g4:#6fa8ff; --g5:#7fc4b8;   /* processing glow */
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --w-idle:186px; --h-idle:32px;
+  --w-peek:300px; --h-peek:36px;
+  --w-game:560px; --h-game:222px;
+  --w-done:380px; --h-done:40px;
+  color-scheme:dark;
+}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:var(--ui);-webkit-user-select:none;user-select:none}
+.island{position:absolute;top:0;left:50%;transform:translateX(-50%);background:var(--island);color:var(--fg);
+  width:var(--w-idle);height:var(--h-idle);border-radius:0 0 14px 14px;overflow:hidden;
+  transition:width .5s cubic-bezier(.32,1.25,.5,1),height .5s cubic-bezier(.32,1.25,.5,1),border-radius .5s}
+.island.peek{width:var(--w-peek);height:var(--h-peek);border-radius:0 0 18px 18px}
+.island.game{width:var(--w-game);height:var(--h-game);border-radius:0 0 30px 30px}
+.island.done{width:var(--w-done);height:var(--h-done);border-radius:0 0 20px 20px}
+.row{position:absolute;top:0;left:0;right:0;height:36px;display:flex;align-items:center;gap:8px;padding:0 18px;font-size:13px;opacity:0;transition:opacity .25s}
+.island:not(.idle) .row{opacity:1;transition-delay:.15s}
+.row .label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta{font:11px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.island.done .meta{color:var(--ok)}
+.mini{width:20px;height:20px;display:block;transform:translateY(-34px);transition:transform .55s cubic-bezier(.34,1.7,.5,1) .1s}
+.island:not(.idle) .mini{transform:translateY(0)}
+.island.game .mini{opacity:0}
+.dots{display:inline-flex;gap:3px;margin-left:4px;vertical-align:middle}
+.dots b{width:3px;height:3px;border-radius:50%;background:var(--accent);display:block;animation:d 1.2s infinite}
+.dots b:nth-child(2){animation-delay:.15s}.dots b:nth-child(3){animation-delay:.3s}
+@keyframes d{0%,60%,100%{opacity:.25}30%{opacity:1}}
+#cv{position:absolute;left:14px;top:40px;width:532px;height:151px;opacity:0;transition:opacity .25s;cursor:pointer}
+.island.game #cv{opacity:1;transition-delay:.25s}
+/* Processing glow: bottom band only, below the game's ground line, never inside the canvas */
+.glow{position:absolute;left:0;right:0;bottom:0;height:34px;opacity:0;transition:opacity .6s;pointer-events:none;
+  -webkit-mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%);mask:linear-gradient(to top,#000 0%,rgba(0,0,0,.6) 45%,transparent 100%)}
+.glow::before{content:"";position:absolute;left:-10%;right:-10%;bottom:-14px;height:40px;filter:blur(12px);
+  background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3),var(--g4),var(--g5),var(--g1),var(--g2),var(--g3));background-size:200% 100%;animation:flow 7s linear infinite}
+.glow::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;filter:blur(1px);
+  background:linear-gradient(90deg,transparent,var(--g2),var(--g3),var(--g4),transparent);background-size:200% 100%;animation:flow 4s linear infinite reverse;opacity:.8}
+.island.game .glow{opacity:.55;transition-delay:.3s}
+.island.game.is-paused .glow{opacity:.18}
+@keyframes flow{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.island,.mini{transition:none}.dots b,.glow::before,.glow::after{animation:none}}
+
+/* Dev harness (browser only) */
+.harness{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:16px;font:13px var(--ui)}
+.harness button{font:500 13px var(--ui);color:#ecebe6;background:#1b1b19;border:1px solid #2a2926;border-radius:8px;padding:7px 12px;cursor:pointer}
+.harness span{color:#8d8a82;font:12px var(--mono);align-self:center}
+body.dev{background:radial-gradient(120% 90% at 20% 10%,#4a3a33,transparent 60%),linear-gradient(160deg,#2b2a3a,#131217)}
+</style>
+</head>
+<body>
+<div class="island idle" id="island" aria-live="polite">
+  <div class="row">
+    <canvas class="mini" id="mini" width="40" height="40"></canvas>
+    <span class="label" id="label">Thinking</span>
+    <span class="meta" id="meta">0s</span>
+  </div>
+  <canvas id="cv" width="904" height="256"></canvas>
+  <div class="glow" aria-hidden="true"></div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);
+const island=$('island');
+
+/* ============================================================
+   CONFIG (native can override with event {type:'config', ...})
+   ============================================================ */
+const CONFIG={
+  showAfterMs:2000,      // only open the island if Claude is still working after this long
+  peekToGameMs:1450,     // time the character "peeks" before the strip expands
+  doneHoldMs:2200,       // how long the "Claude is done" pill stays before folding
+  countdownSecs:5,       // countdown before every start / resume
+  resumeAfterEscSecs:3,  // shorter countdown after an Esc pause
+  stuckTimeoutMs:30*60*1000, // fold away if no stop event arrives (Esc/Ctrl+C interrupts)
+};
+
+/* ============================================================
+   NATIVE BRIDGE
+   JS -> native: window.webkit.messageHandlers.runner.postMessage(obj)
+   native -> JS: window.NotchRunner.event(obj)
+   ============================================================ */
+const native=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.runner;
+function post(msg){try{if(native)native.postMessage(msg);}catch(e){}}
+
+/* ============================================================
+   CHARACTER: "Bit" — original pixel buddy (antenna, round body, 2 legs)
+   A = antenna tip, X = body, E = eye
+   ============================================================ */
+const BIT_BODY=[
+  "....A.....",
+  "....X.....",
+  "..XXXXXX..",
+  ".XXXXXXXX.",
+  ".XEEXXEEX.",
+  ".XEEXXEEX.",
+  ".XXXXXXXX.",
+  "..XXXXXX..",
+];
+const BIT_LEGS=[
+  ["..X....X..","..X....X.."],   // stand
+  ["..X....X..",".X......X."],   // run A
+  ["...X..X...","..X....X.."],   // run B
+];
+const BIT_DUCK=[".XXXXXXXX.",".XEEXXEEX.",".XXXXXXXX.","..XXXXXX..","..X....X.."];
+const SPRITE_W=10, STAND_ROWS=10, DUCK_ROWS=5;
+function drawBit(c,x,y,p,frame,duck,eyeColor){
+  const rows=duck?BIT_DUCK:BIT_BODY.concat(BIT_LEGS[frame]);
+  rows.forEach((r,ry)=>[...r].forEach((ch,rx)=>{
+    if(ch===".")return;
+    c.fillStyle=ch==="E"?(eyeColor||"#000"):ch==="A"?"#ffd88a":"#f5b841";
+    c.fillRect(x+rx*p,y+ry*p,p,p);
+  }));
+}
+const mini=$('mini').getContext('2d');drawBit(mini,0,0,4,0,false);
+
+/* ============================================================
+   ISLAND STATE
+   idle (notch size) -> peek (character drops) -> game (strip) -> done (pill) -> idle
+   ============================================================ */
+const SIZES={idle:[186,32],peek:[300,36],game:[560,222],done:[380,40]};
+let islandState='idle';
+function setIsland(s){
+  islandState=s;
+  island.className='island '+s+(g&&g.state==='paused'?' is-paused':'');
+  post({type:'island',state:s,width:SIZES[s][0],height:SIZES[s][1],interactive:s==='game'});
+  if(s==='game')post({type:'wantsKeyboard'});
+}
+
+/* ============================================================
+   SESSION FLOW (driven by hook events)
+   ============================================================ */
+let phase='ready';        // ready | waiting | working | done
+let t0=0,clockT=null,timers=[],stuckT=null,sessionId=null;
+function clearTimers(){timers.forEach(clearTimeout);timers=[];clearInterval(clockT);clearTimeout(stuckT);}
+function later(fn,ms){timers.push(setTimeout(fn,ms));}
+
+function onPrompt(e){
+  sessionId=e&&e.sessionId||null;
+  clearTimers();
+  phase='waiting';t0=performance.now();
+  later(()=>{
+    if(phase!=='waiting')return;
+    phase='working';
+    $('label').innerHTML='Thinking<span class="dots"><b></b><b></b><b></b></span>';
+    setIsland('peek');
+    later(()=>{if(phase!=='working')return;$('label').textContent='Claude is working';setIsland('game');onStripOpen();},CONFIG.peekToGameMs);
+  },CONFIG.showAfterMs);
+  clockT=setInterval(()=>{$('meta').textContent=Math.floor((performance.now()-t0)/1000)+'s';},250);
+  stuckT=setTimeout(()=>onStop({reason:'timeout'}),CONFIG.stuckTimeoutMs);
+}
+function onStop(){
+  if(phase==='waiting'){clearTimers();phase='ready';return;}   // finished before the island showed
+  if(phase!=='working')return;
+  clearTimers();phase='done';
+  pause();saveState();
+  $('label').textContent='Claude is done';
+  $('meta').textContent=g.saved>0?fmt(g.saved)+' tokens saved (^‿^)':'';
+  setIsland('done');
+  later(()=>{setIsland('idle');phase='ready';post({type:'returnFocus',sessionId});},CONFIG.doneHoldMs);
+}
+function onReset(){clearTimers();phase='ready';keepSaved=0;best=0;everPlayed=false;newGame();setIsland('idle');saveState();}
+
+/* ============================================================
+   GAME
+   ============================================================ */
+const cv=$('cv'),c=cv.getContext('2d');c.scale(2,2);
+const W=452,H=128,GROUND=H-14,P=3,PX=26;
+const BIT_W=SPRITE_W*P, STAND_H=STAND_ROWS*P, DUCK_H=DUCK_ROWS*P;
+const GRAV=.45,JUMP=5.4,HOLD_GRAV=.18,HOLD_MAX=14,FASTFALL=3;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const LBL={
+  bug:['bug','NaN','undefined','TODO','typo','console.log','any'],
+  wall:['404','500','EADDRINUSE','CORS','429','403','ENOENT'],
+  wide:['node_modules','legacy code','tech debt','monorepo','.env missing','lockfile diff'],
+  cloud:['529 overloaded','localhost refused','Vercel build failed','npm ERR!','port 3000 in use','DNS_PROBE'],
+  bird:['merge conflict','flaky test','Slack ping','scope creep','"quick call?"','PM feedback'],
+  bomb:['prod deploy','rm -rf','force push','Friday 5pm','DROP TABLE','hotfix'],
+};
+const LEVELS=[
+  {at:0, name:'Level 1 · just bugs'},
+  {at:6, name:'Level 2 · walls and outages · hold to jump higher'},
+  {at:14,name:'Level 3 · merge conflicts take flight'},
+  {at:24,name:'Level 4 · deploys dropping from above'},
+  {at:36,name:'Level 5 · everything, all at once'},
+];
+const MOOD={happy:'(^‿^)',joy:'\\(^o^)/',cool:'(⌐■_■)',sweat:'(°ロ°;)',dead:'(x_x)',idle:'(・‿・)',sleep:'(-_-) zZ'};
+let g,best=0,keepSaved=0,everPlayed=false;
+
+function newGame(){g={state:'idle',y:0,vy:0,holding:false,holdT:0,ducking:false,speed:3.2,base:3.2,dist:0,saved:keepSaved,
+  obs:[],pops:[],next:200,t:0,ctx:0,flash:0,flashText:'',level:1,cleared:0,jumps:0,mood:'idle',moodT:0,hitBy:'',cd:0,cdNote:''};}
+newGame();
+const fmt=n=>n>=1000?(n/1000).toFixed(1)+'K':String(Math.floor(n));
+function mood(m,t=50){g.mood=m;g.moodT=t;}
+function flash(t){g.flash=120;g.flashText=t;}
+const inGame=()=>islandState==='game';
+
+// Every start and resume: clear track ahead (breather) + countdown. Click/space skips the countdown.
+function countdown(secs,note){g.state='count';g.cd=secs*60;g.cdNote=note;g.y=0;g.vy=0;g.holding=false;g.ducking=false;}
+function breather(){g.obs=[];g.pops=[];g.next=g.speed*110;}
+function onStripOpen(){breather();countdown(CONFIG.countdownSecs,everPlayed?'Resuming at Lv '+g.level+' · '+fmt(g.saved)+' tokens saved':'Get ready');}
+function begin(){g.state='run';everPlayed=true;mood('happy',60);}
+function pause(){if(g.state==='run'||g.state==='count'){g.state='paused';g.holding=false;g.ducking=false;}}
+function resume(){breather();countdown(CONFIG.resumeAfterEscSecs,'Back in');}
+function restart(){keepSaved=g.saved;newGame();begin();}
+function press(){
+  if(!inGame())return;
+  if(g.state==='idle'||g.state==='count'){begin();return;}
+  if(g.state==='over'){restart();return;}
+  if(g.state==='paused'){resume();return;}
+  if(g.y===0){g.vy=JUMP;g.holding=true;g.holdT=0;g.jumps++;}
+}
+function release(){g.holding=false;}
+
+cv.addEventListener('pointerdown',e=>{e.preventDefault();post({type:'wantsKeyboard'});press();});
+addEventListener('pointerup',release);
+addEventListener('keydown',e=>{
+  if(!inGame())return;
+  if(e.key==='Escape'){e.preventDefault();if(g.state==='paused')resume();else pause();return;}
+  if((e.code==='Space'||e.code==='ArrowUp')&&!e.repeat){e.preventDefault();press();}
+  if(e.code==='ArrowDown'){e.preventDefault();g.ducking=true;}
+});
+addEventListener('keyup',e=>{
+  if(e.code==='Space'||e.code==='ArrowUp')release();
+  if(e.code==='ArrowDown')g.ducking=false;
+});
+
+const tw=t=>{c.font='500 8px '+getComputedStyle(document.documentElement).getPropertyValue('--mono');return c.measureText(t).width;};
+function spawn(){
+  const L=g.level,x=W+10,pool=['bug','bug'];
+  if(L>=2)pool.push('wall','cloud');
+  if(L>=3)pool.push('bird','bird','wide');
+  if(L>=4)pool.push('bomb','bomb');
+  if(L>=5)pool.push('bird','bomb','wall','wide');
+  const k=pick(pool),label=pick(LBL[k]);let w=13;
+  if(k==='bug')g.obs.push({k,label,x,w:13,h:12,y:GROUND-12});
+  if(k==='wall')g.obs.push({k,label,x,w:10,h:36,y:GROUND-36});                       // needs a held jump
+  if(k==='wide'){w=48+Math.random()*22;g.obs.push({k,label,x,w,h:10,y:GROUND-10});}   // needs a long held jump
+  if(k==='cloud'){w=Math.max(40,tw(label)+12);g.obs.push({k,label,x,w,h:12,y:GROUND-36});} // duck
+  if(k==='bird'){const high=Math.random()<.4;g.obs.push({k,label,x,w:16,h:8,y:high?GROUND-60:GROUND-30,vx:1.2});} // low: duck, high: stay down
+  if(k==='bomb'){const lx=160+Math.random()*170;g.obs.push({k,label,x:lx+60,w:11,h:12,y:-14,vy:0,fall:true});}  // falls, then jump it
+  const air=40,tight=[0,140,120,105,95,80][L];
+  g.next=g.speed*air+w+Math.random()*tight;          // always room to land a full held jump
+  if(L>=5&&Math.random()<.2)g.next=g.speed*26+w;     // occasional quick double
+}
+function step(dt){
+  g.t+=dt;
+  if(g.state==='count'){g.cd-=dt;if(g.cd<=0)begin();return;}
+  if(g.state==='over'){g.cd-=dt;if(g.cd<=0)restart();return;}
+  if(g.state!=='run')return;
+  g.speed=Math.min(7.5,g.speed+.0016*dt);g.dist+=g.speed*dt;
+  g.ctx+=.0012*g.speed*dt;
+  if(g.ctx>=1){g.ctx=0;g.speed=g.base+(g.speed-g.base)*.3;flash('/compact · context cleared, speed reset');mood('cool');}
+  if(g.flash>0)g.flash-=dt;
+  if(g.moodT>0)g.moodT-=dt;else g.mood='happy';
+  const nl=LEVELS.filter(l=>g.cleared>=l.at).length;
+  if(nl>g.level){g.level=nl;flash(LEVELS[nl-1].name);mood('sweat',70);}
+  let grav=GRAV;
+  if(g.holding&&g.vy>0&&g.holdT<HOLD_MAX){grav=HOLD_GRAV;g.holdT+=dt;}
+  if(g.ducking&&g.y>0)grav=GRAV*FASTFALL;
+  g.vy-=grav*dt;g.y=Math.max(0,g.y+g.vy*dt);if(g.y===0)g.vy=0;
+  g.next-=g.speed*dt;if(g.next<=0)spawn();
+  const duck=g.ducking&&g.y===0,h=duck?DUCK_H:STAND_H,top=GROUND-g.y-h+2,bot=GROUND-g.y;
+  const left=PX+4,right=PX+BIT_W-4;   // forgiving hitbox
+  for(const o of g.obs){
+    o.x-=(g.speed+(o.vx||0))*dt;
+    if(o.fall){o.vy+=.18*dt;o.y+=o.vy*dt;if(o.y>=GROUND-o.h){o.y=GROUND-o.h;o.fall=false;}}
+    if(o.x<right&&o.x+o.w>left&&o.y<bot&&o.y+o.h>top){
+      g.state='over';g.hitBy=o.label;mood('dead',1e9);best=Math.max(best,Math.floor(g.saved));keepSaved=g.saved;g.cd=5*60;saveState();return;
+    }
+    if(!o.passed&&o.x+o.w<left){
+      o.passed=1;g.cleared++;
+      const gain=Math.round((60+Math.random()*180)*(1+(g.level-1)*.5)*(o.k==='wide'||o.k==='wall'?1.4:1));
+      g.saved+=gain;g.pops.push({x:PX+BIT_W/2,y:GROUND-g.y-STAND_H-8,t:40,txt:'+'+gain});
+      mood(g.cleared%5===0?'joy':'happy',40);
+    }
+  }
+  g.obs=g.obs.filter(o=>o.x>-90);
+  g.pops.forEach(p=>{p.t-=dt;p.y-=.4*dt;});g.pops=g.pops.filter(p=>p.t>0);
+}
+
+const MONO=getComputedStyle(document.documentElement).getPropertyValue('--mono');
+const UI=getComputedStyle(document.documentElement).getPropertyValue('--ui');
+function text(t,x,y,col,font,align){c.font=font||'500 8px '+MONO;c.textAlign=align||'center';c.fillStyle=col||'#8b8880';c.fillText(t,x,y);}
+function draw(){
+  c.clearRect(0,0,W,H);
+  c.fillStyle='#3a3936';c.fillRect(0,GROUND,W,1);
+  for(let i=0;i<W/22+2;i++){const x=((i*22-g.dist*.7)%(W+22)+W+22)%(W+22)-11;c.fillRect(x,GROUND+5+(i%3)*2,i%2?6:3,1);}
+  c.textBaseline='middle';
+  for(const o of g.obs){
+    const cx=o.x+o.w/2;
+    if(o.k==='bug'){c.fillStyle='#cfcdc6';c.fillRect(o.x,o.y,o.w,o.h);c.fillRect(o.x-2,o.y+3,2,2);c.fillRect(o.x+o.w,o.y+3,2,2);c.fillRect(o.x-2,o.y+8,2,2);c.fillRect(o.x+o.w,o.y+8,2,2);text(o.label,cx,o.y-6);}
+    else if(o.k==='wall'){c.fillStyle='#cfcdc6';c.fillRect(o.x,o.y,o.w,o.h);c.fillStyle='#000';for(let j=4;j<o.h;j+=6)c.fillRect(o.x,o.y+j,o.w,1);text(o.label,cx,o.y-6);}
+    else if(o.k==='wide'){c.fillStyle='#9a978f';c.fillRect(o.x,o.y,o.w,o.h);c.fillStyle='#000';for(let j=6;j<o.w;j+=8)c.fillRect(o.x+j,o.y,1,o.h);text(o.label,cx,o.y-6);}
+    else if(o.k==='cloud'){c.fillStyle='#5b5953';c.fillRect(o.x+5,o.y-3,o.w-10,3);c.fillRect(o.x,o.y,o.w,o.h);text(o.label,cx,o.y+o.h/2+1,'#000');}
+    else if(o.k==='bird'){c.fillStyle='#cfcdc6';const up=Math.floor(g.t/6)%2;c.fillRect(o.x+4,o.y+3,10,4);c.fillRect(o.x,o.y+3,4,2);
+      if(up)c.fillRect(o.x+6,o.y-2,3,5);else c.fillRect(o.x+6,o.y+7,3,4);text(o.label,cx,o.y-8);}
+    else if(o.k==='bomb'){
+      if(o.fall){c.fillStyle='rgba(245,184,65,.35)';c.fillRect(o.x-1,GROUND+2,o.w+2,2);}
+      c.fillStyle='#cfcdc6';c.beginPath();c.arc(cx,o.y+7,6,0,7);c.fill();c.fillRect(cx-1,o.y-1,2,3);
+      c.fillStyle=Math.floor(g.t/4)%2?'#f5b841':'#ff9a6b';c.fillRect(cx+1,o.y-3,2,2);text(o.label,cx,o.y-9,o.fall?'#f5b841':'#8b8880');}
+  }
+  const duck=g.ducking&&g.y===0&&g.state==='run';
+  const fr=g.state==='run'&&g.y===0?1+Math.floor(g.t/5)%2:0;
+  drawBit(c,PX,GROUND-g.y-(duck?DUCK_H:STAND_H),P,fr,duck,g.state==='over'?'#5b5953':'#000');
+  for(const p of g.pops){c.globalAlpha=Math.min(1,p.t/20);text(p.txt,p.x,p.y,'#7fc49a');c.globalAlpha=1;}
+  // HUD
+  text('Lv '+g.level,0,7,'#8b8880','500 9px '+MONO,'left');
+  c.strokeStyle='#5b5953';c.strokeRect(30.5,3.5,50,6);c.fillStyle='#f5b841';c.fillRect(31,4,49*g.ctx,5);
+  const face=g.state==='paused'?MOOD.sleep:(MOOD[g.mood]||MOOD.happy);
+  text(fmt(g.saved)+' tokens saved  '+face,W-2,7,'#f2f1ec','600 10px '+UI,'right');
+  // centre messages
+  const mx=W/2+20,my=GROUND-70;
+  if(g.state==='count'){
+    text(String(Math.max(1,Math.ceil(g.cd/60))),mx,my-4,'#f5b841','700 26px '+UI);
+    text(g.cdNote+' · click or press space to start now',mx,my+20,'#8b8880','500 10px '+UI);
+  }else if(g.state==='over'){
+    text(MOOD.dead+'  Hit by '+g.hitBy,mx,my-6,'#f2f1ec','500 11px '+UI);
+    text('Running again in '+Math.max(1,Math.ceil(g.cd/60))+' · click to go now',mx,my+10,'#8b8880','500 10px '+UI);
+  }else if(g.state==='paused'){
+    text('Paused',mx,my-6,'#f2f1ec','500 11px '+UI);
+    text('Esc or click to resume',mx,my+10,'#8b8880','500 10px '+UI);
+  }else if(g.state==='idle'){
+    text('Click or press space to play  '+MOOD.idle,mx,my,'#f2f1ec','500 11px '+UI);
+  }else if(g.flash>0){c.globalAlpha=Math.min(1,g.flash/30);text(g.flashText,mx,my,'#f5b841','500 11px '+UI);c.globalAlpha=1;}
+  if(g.state!=='run')text('space jump · hold = higher · ↓ duck / fast-fall · esc pause',mx,my+34,'#5b5953');
+}
+
+/* ============================================================
+   PERSISTENCE: native store if present, else localStorage
+   ============================================================ */
+function snapshot(){return{saved:Math.floor(g.saved),level:g.level,cleared:g.cleared,speed:g.speed,ctx:g.ctx,best,everPlayed};}
+function saveState(){const s=snapshot();post({type:'save',state:s});if(!native){try{localStorage.setItem('notch-runner',JSON.stringify(s));}catch(e){}}}
+function restore(s){
+  if(!s)return;
+  keepSaved=s.saved||0;best=s.best||0;everPlayed=!!s.everPlayed;newGame();
+  g.level=s.level||1;g.cleared=s.cleared||0;g.speed=s.speed||g.base;g.ctx=s.ctx||0;
+}
+if(!native){try{restore(JSON.parse(localStorage.getItem('notch-runner')||'null'));}catch(e){}}
+
+/* ============================================================
+   PUBLIC API for the native app
+   ============================================================ */
+window.NotchRunner={
+  event(e){
+    if(!e||!e.type)return;
+    if(e.type==='prompt')onPrompt(e);
+    else if(e.type==='stop')onStop(e);
+    else if(e.type==='reset')onReset();
+    else if(e.type==='restore')restore(e.state);
+    else if(e.type==='config')Object.assign(CONFIG,e.config||{});
+    else if(e.type==='pause')pause();
+  },
+  state(){return{phase,island:islandState,game:g.state,...snapshot()};},
+};
+
+let last=performance.now();
+(function loop(now){
+  const dt=Math.min(2.5,(now-last)/16.67);last=now;
+  if(phase==='working'&&islandState==='game')step(dt);
+  draw();
+  island.classList.toggle('is-paused',g.state==='paused');
+  requestAnimationFrame(loop);
+})(last);
+
+post({type:'ready'});
+
+/* ============================================================
+   DEV HARNESS (only when opened in a normal browser)
+   ============================================================ */
+if(!native){
+  document.body.classList.add('dev');
+  CONFIG.showAfterMs=250;
+  const h=document.createElement('div');h.className='harness';
+  h.innerHTML='<button id="dPrompt">Send prompt</button><button id="dStop">Claude finished</button><button id="dReset">Reset</button><span id="dState"></span>';
+  document.body.appendChild(h);
+  $('dPrompt').onclick=()=>NotchRunner.event({type:'prompt',sessionId:'dev'});
+  $('dStop').onclick=()=>NotchRunner.event({type:'stop',sessionId:'dev'});
+  $('dReset').onclick=()=>NotchRunner.event({type:'reset'});
+  setInterval(()=>{const s=NotchRunner.state();$('dState').textContent=s.phase+' · '+s.island+' · '+s.game;},300);
+}
+})();
+</script>
+</body>
+</html>
