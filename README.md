@@ -19,10 +19,11 @@ back in your terminal.
 Everything in [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) is built and has run
 on a real machine: install, play, Claude finishes, focus comes back.
 
-| Piece | State |
-|---|---|
-| `game/index.html` — island UI + game | working |
-| Menu-bar app, notch panel, transparent web view | working |
+
+
+
+
+
 | `HookInstaller` — merge/unmerge `~/.claude/settings.json` | working, idempotent |
 | `EventServer` — localhost listener for hook events | working |
 | `SessionRouter` — multi-session state, debouncing | working |
