@@ -51,9 +51,13 @@ final class MenuBar: NSObject, NSMenuDelegate {
         add(menu, "Close the island", #selector(closeIsland), key: "w")
         menu.addItem(.separator())
 
-        add(menu, "Simulate prompt", #selector(simulatePrompt))
-        add(menu, "Simulate stop", #selector(simulateStop))
-        menu.addItem(.separator())
+        // Developer controls, revealed by holding Option as the menu opens --
+        // the same gesture the system uses for advanced menu items.
+        if NSEvent.modifierFlags.contains(.option) {
+            add(menu, "Simulate prompt", #selector(simulatePrompt))
+            add(menu, "Simulate stop", #selector(simulateStop))
+            menu.addItem(.separator())
+        }
 
         let settings = NSMenu()
         for ms in [0, 2000, 5000, 10000] {

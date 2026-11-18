@@ -45,14 +45,53 @@ for higher), ↓ ducks and fast-falls, Esc pauses.
 
 ## Install
 
-Not yet released. Once `v0.1.0` is tagged:
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AshleyCreations/notch-runner/main/install.sh | bash
 ```
 
-Then restart Claude Code. If it asks you to review hooks, approve the Notch
-Runner ones in `/hooks`.
+Then **restart Claude Code** and send a prompt. Anything that takes more than
+two seconds brings Bit out of the notch.
+
+### What the installer changes
+
+Three things, and nothing else:
+
+| Path | What happens |
+|---|---|
+| `/Applications/NotchRunner.app` | the app (`~/Applications` if `/Applications` is not writable) |
+| `~/.notch-runner/` | the hook script, plus a port file and a mode-600 token |
+| `~/.claude/settings.json` | three hook entries appended |
+
+It never uses `sudo`, and it touches nothing else in `~/.claude`.
+
+### About the hooks
+
+Notch Runner needs to know when you send a prompt and when Claude finishes.
+Claude Code exposes exactly that through hooks, so the installer appends three
+entries to `~/.claude/settings.json`:
+
+```json
+"UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "~/.notch-runner/notch-runner-hook.sh prompt", "timeout": 3 }] }],
+"Stop":             [{ "hooks": [{ "type": "command", "command": "~/.notch-runner/notch-runner-hook.sh stop",   "timeout": 3 }] }],
+"SessionEnd":       [{ "hooks": [{ "type": "command", "command": "~/.notch-runner/notch-runner-hook.sh end",    "timeout": 3 }] }]
+```
+
+Your existing file is copied to `settings.json.notch-runner-backup-<timestamp>`
+first, and your own hooks are left alone -- ours are only ever appended.
+Running the installer twice does not duplicate them.
+
+**Claude Code will ask you to approve the new hooks.** That prompt is expected,
+and it is Claude Code being careful on your behalf: a hook is a shell command
+it runs for you, so it wants you to look before it runs anything. Open
+`/hooks`, find the three `notch-runner-hook.sh` entries, and approve them. If
+you would rather read the script first, it is
+[`hooks/notch-runner-hook.sh`](hooks/notch-runner-hook.sh) -- 16 lines, and
+all it does is POST to `127.0.0.1`.
+
+The hook never reads your prompt. It forwards only the session id, the working
+directory and which terminal you are in, it never writes to stdout (which would
+otherwise land in Claude's context), and it backgrounds its own request with a
+one-second timeout so it cannot slow Claude down or block on a stopped app.
 
 ### Why does macOS say it's from an unidentified developer?
 
@@ -72,9 +111,20 @@ cd app && xcodegen generate && open NotchRunner.xcodeproj
 curl -fsSL https://raw.githubusercontent.com/AshleyCreations/notch-runner/main/uninstall.sh | bash
 ```
 
-That quits the app, removes only our entries from `~/.claude/settings.json`
-(everything else is left byte-for-byte), and deletes the app and
-`~/.notch-runner`.
+That quits the app, removes only our entries from `~/.claude/settings.json`,
+and deletes the app and `~/.notch-runner`.
+
+Your `settings.json` backups are deliberately **not** deleted, in case you want
+them. Clean them up yourself when you are happy:
+
+```bash
+rm ~/.claude/settings.json.notch-runner-backup-*
+```
+
+One known wrinkle: the hook entries are removed and every other setting is
+preserved, but the file is rewritten through a JSON serialiser, so key order
+and spacing may change even though the values do not. If you keep your dotfiles
+in git, expect a cosmetic diff.
 
 ## How it works
 
