@@ -6,13 +6,10 @@ stretches into a minimal runner game you play while Claude works. When Claude
 finishes, the game pauses, the strip folds back into the notch, and you land
 back in your terminal.
 
+https://github.com/user-attachments/assets/507854a1-22c5-4a43-a23c-3b4f9669f7a5
+
 > Not affiliated with Anthropic. Bit is an original character; no Anthropic
 > mascot, logo or branding is used.
-
-<!-- DEMO GOES HERE.
-     Record with Cmd+Shift+5, then edit this file on github.com and drag the
-     .mov straight into the editor at this spot: GitHub hosts it and renders a
-     player, so no ffmpeg and no gif conversion needed. -->
 
 ## Status
 
