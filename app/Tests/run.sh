@@ -6,6 +6,8 @@
 # directory because Swift only allows top-level code in a file named main.swift.
 set -euo pipefail
 cd "$(dirname "$0")"
+# Keeps the suites out of the real ~/.notch-runner.
+export NOTCH_RUNNER_TEST=1
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 status=0

@@ -46,6 +46,10 @@ final class SessionRouter {
     /// app's NSLog output is redacted out of `log show`, so this goes to a file
     /// you can read. Removed with the rest of ~/.notch-runner on uninstall.
     private static func noteEntrypoint(_ entry: String) {
+        // The test suite exercises this with made-up entrypoints, and must not
+        // write them into the real ~/.notch-runner and pass them off as
+        // surfaces someone actually used.
+        guard ProcessInfo.processInfo.environment["NOTCH_RUNNER_TEST"] == nil else { return }
         let url = EventServer.supportDir.appendingPathComponent("entrypoints")
         let line = "\(ISO8601DateFormatter().string(from: Date()))  \(entry)\n"
         guard let data = line.data(using: .utf8) else { return }
