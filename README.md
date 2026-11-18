@@ -11,19 +11,24 @@ back in your terminal.
 
 ## Status
 
-Early. The island UI and game are done; the native app is being built around
-them. See [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) for the full brief and
-the build order.
+Everything in [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) is built and has run
+on a real machine: install, play, Claude finishes, focus comes back.
 
 | Piece | State |
 |---|---|
-| `game/index.html` — island UI + game | done |
-| Menu-bar app, notch panel, transparent web view | done |
-| `HookInstaller` — merge/unmerge `~/.claude/settings.json` | done |
-| `EventServer` — localhost listener for hook events | done |
-| `SessionRouter` — multi-session state, debouncing | done |
-| `FocusReturner` — exact Terminal/iTerm tab | done, untested on a real screen |
-| `install.sh` / release workflow | written, untested end to end |
+| `game/index.html` — island UI + game | working |
+| Menu-bar app, notch panel, transparent web view | working |
+| `HookInstaller` — merge/unmerge `~/.claude/settings.json` | working, idempotent |
+| `EventServer` — localhost listener for hook events | working |
+| `SessionRouter` — multi-session state, debouncing | working |
+| `FocusReturner` — exact Terminal/iTerm tab | working |
+| `install.sh` / `uninstall.sh` / release workflow | working, run end to end |
+
+Not yet verified: Macs **without** a notch, external displays, and two Claude
+sessions running at once. The code paths exist and are unit-tested, but none of
+them has run on real hardware.
+
+It is also **unsigned** — see [below](#why-does-macos-say-its-from-an-unidentified-developer).
 
 ## Tests
 
