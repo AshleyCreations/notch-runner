@@ -23,7 +23,7 @@
   --w-peek:300px; --h-peek:36px;
   --w-game:560px; --h-game:222px;
   --w-done:380px; --h-done:40px;
-  --scale:1.5;               /* expanded states only; idle keeps hugging the notch */
+  --scale:1.25;              /* expanded states only; idle keeps hugging the notch */
   --close-gap:10px; --close-size:30px;
   color-scheme:dark;
 }
@@ -164,7 +164,7 @@ const mini=$('mini').getContext('2d');drawBit(mini,0,0,4,0,false);
    ============================================================ */
 // Native sizes the panel from these, so they must be the on-screen footprint:
 // the expanded states are scaled, and game also covers the close button below it.
-const SCALE=1.5, CLOSE_BAND=10+30+6;
+const SCALE=1.25, CLOSE_BAND=10+30+6;
 const BASE={idle:[186,32],peek:[300,36],game:[560,222],done:[380,40]};
 const SIZES={
   idle:BASE.idle,
