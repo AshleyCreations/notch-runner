@@ -41,6 +41,23 @@ final class SessionRouter {
 
     func session(for id: String) -> Session? { sessions[id] }
 
+    /// Records each surface we have seen, so the blocklist can be set from what
+    /// Claude Code actually reports rather than from guesswork. An ad-hoc signed
+    /// app's NSLog output is redacted out of `log show`, so this goes to a file
+    /// you can read. Removed with the rest of ~/.notch-runner on uninstall.
+    private static func noteEntrypoint(_ entry: String) {
+        let url = EventServer.supportDir.appendingPathComponent("entrypoints")
+        let line = "\(ISO8601DateFormatter().string(from: Date()))  \(entry)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url)
+        }
+    }
+
     // MARK: entry point
 
     /// Surfaces the island should stay out of. Claude Code itself is welcome
@@ -67,7 +84,7 @@ final class SessionRouter {
 
         let entry = (event.entrypoint ?? "").lowercased()
         if !entry.isEmpty, seenEntrypoints.insert(entry).inserted {
-            NSLog("notch-runner: first event from entrypoint '\(entry)'")
+            noteEntrypoint(entry)
         }
         return !blockedEntrypoints.contains(entry)
     }
