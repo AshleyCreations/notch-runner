@@ -12,7 +12,11 @@ jobs:
   build:
     # macos-14 was retired on 2 Nov 2026. The deployment target stays at 14.0;
     # that is a build setting and does not follow the runner's OS.
-    runs-on: macos-15
+    #
+    # Intel rather than arm64: the arm64 pool kept dropping this job with
+    # "not acquired by Runner of type hosted" after 15 minutes of queueing.
+    # The build is universal either way, since the arm64 slice cross-compiles.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
 
