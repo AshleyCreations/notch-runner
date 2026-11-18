@@ -9,6 +9,11 @@ back in your terminal.
 > Not affiliated with Anthropic. Bit is an original character; no Anthropic
 > mascot, logo or branding is used.
 
+<!-- DEMO GOES HERE.
+     Record with Cmd+Shift+5, then edit this file on github.com and drag the
+     .mov straight into the editor at this spot: GitHub hosts it and renders a
+     player, so no ffmpeg and no gif conversion needed. -->
+
 ## Status
 
 Everything in [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) is built and has run
@@ -100,15 +105,49 @@ one-second timeout so it cannot slow Claude down or block on a stopped app.
 
 ### Why does macOS say it's from an unidentified developer?
 
-The release build is ad-hoc signed, not signed with a paid Developer ID and not
-notarised. `install.sh` clears the quarantine flag on the app it just
-downloaded so Gatekeeper lets it run. If you would rather not have a script do
-that, build it yourself:
+Because it is. Notch Runner is **not signed with an Apple Developer ID and not
+notarised** -- that needs a paid Apple developer account, and this is a free
+toy. The release is ad-hoc signed instead, which satisfies macOS's "is this
+binary intact" check but tells it nothing about who built it.
+
+So macOS quarantines it, and `install.sh` clears that flag:
 
 ```bash
+xattr -dr com.apple.quarantine /Applications/NotchRunner.app
+```
+
+**That line is the part you should think about.** Clearing quarantine is how
+you tell macOS you vouch for an app it cannot vouch for. You are being asked to
+trust a stranger on the internet, and piping a script into `bash` means you are
+trusting it before you have read it. That is a reasonable thing to be wary of.
+
+What you can check, if you care to:
+
+- **Read the installer first.** It is [`install.sh`](install.sh), about 70 lines:
+  `curl -fsSL https://raw.githubusercontent.com/AshleyCreations/notch-runner/main/install.sh | less`
+- **The binary is built in public.** Every release is produced by
+  [the release workflow](.github/workflows/release.yml) running on GitHub's
+  machines from a tagged commit -- not uploaded from anyone's laptop. The
+  release page names the commit it was built from, and you can read every line
+  that went into it.
+- **Watch what it does.** The app makes no network requests at all; the web
+  view is a local file and the server binds to `127.0.0.1`. Little Snitch or
+  `lsof -i -P | grep NotchRunner` will show you.
+
+**Or skip all of that and build it yourself** -- then nothing is quarantined,
+because you compiled it:
+
+```bash
+git clone https://github.com/AshleyCreations/notch-runner.git
+cd notch-runner
 brew install xcodegen
+app/stage-resources.sh
 cd app && xcodegen generate && open NotchRunner.xcodeproj
 ```
+
+If Notch Runner ever earns a Developer ID, this section goes away and the
+installer stops touching quarantine. Until then, the honest answer is: read the
+script, or build it yourself.
 
 ## Uninstall
 
