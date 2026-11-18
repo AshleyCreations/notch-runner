@@ -21,7 +21,7 @@ func newRouter() -> (SessionRouter, () -> [String]) {
     r.debounce = 0.3
     r.stuckTimeout = 1.0            // 30 min in production
     var log: [String] = []
-    r.send = { log.append("\($0["type"] as! String):\($0["sessionId"] as! String)") }
+    r.send = { log.append("\($0["type"] as! String):\($0["sessionId"] as? String ?? "")") }
     return (r, { log })
 }
 
@@ -155,6 +155,23 @@ do {
         let got = SessionRouter.isTerminalSession(ev("prompt", "x", tty: tty, entrypoint: entry))
         check("terminal? " + name, [String(got)], [String(want)])
     }
+}
+
+// 12. /playbot
+do {
+    let (r, log) = newRouter()
+    r.handle(ev("play", "pb", tty: "ttys003")); pump(0.2)
+    check("play opens the strip", log(), ["playNow:"])
+    check("but creates no session", [String(r.sessions.count)], ["0"])
+
+    // Nothing is waiting on Claude, so a stray stop must do nothing.
+    r.handle(ev("stop", "pb", tty: "ttys003")); pump(0.2)
+    check("a stray stop is a no-op", log(), ["playNow:"])
+
+    // And it is still a terminal-only feature.
+    let (r2, log2) = newRouter()
+    r2.handle(ev("play", "pb", tty: "??", entrypoint: "claude-desktop")); pump(0.2)
+    check("play ignored in the desktop app", log2(), [])
 }
 
 print(failures == 0 ? "\nALL PASS" : "\n\(failures) FAILURE(S)")

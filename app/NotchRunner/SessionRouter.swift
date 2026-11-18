@@ -73,6 +73,10 @@ final class SessionRouter {
         case "prompt": prompt(id, event)
         case "stop":   stop(id)
         case "end":    end(id)
+        // "/playbot": open the strip with nothing to wait for. It deliberately
+        // creates no session, so no stop is expected and none can arrive --
+        // the player closes it themselves.
+        case "play":   send?(["type": "playNow"])
         default:       NSLog("notch-runner: ignoring unknown event \(event.event)")
         }
     }

@@ -74,6 +74,22 @@ where dropping a strip over the window you are already looking at is noise
 rather than a nice surprise. Notch Runner only reacts to sessions with a real
 tty, so terminal sessions get the island and the desktop app is left alone.
 
+### Playing without waiting for Claude
+
+Type `/playbot` and the island opens straight away, with nothing to wait for:
+
+```
+> /playbot
+```
+
+Claude never sees it. The hook recognises the prompt, opens the island and
+blocks the prompt from being sent, so you do not burn a turn on it. Close it
+with the **x**, **Cmd+W**, or **Esc** twice.
+
+Your score, level and speed carry across, so this is the same run you have been
+building up while Claude works -- not a separate practice mode. There is also
+**Play now** in the menu, which does the same thing.
+
 ### What the installer changes
 
 Three things, and nothing else:
@@ -110,10 +126,18 @@ you would rather read the script first, it is
 [`hooks/notch-runner-hook.sh`](hooks/notch-runner-hook.sh) -- 16 lines, and
 all it does is POST to `127.0.0.1`.
 
-The hook never reads your prompt. It forwards only the session id, the working
-directory and which terminal you are in, it never writes to stdout (which would
-otherwise land in Claude's context), and it backgrounds its own request with a
-one-second timeout so it cannot slow Claude down or block on a stopped app.
+The hook forwards only the session id, the working directory and which terminal
+you are in. It never writes to stdout (which would otherwise land in Claude's
+context), and it backgrounds its own request with a one-second timeout so it
+cannot slow Claude down or block on a stopped app.
+
+It looks at your prompt for exactly **one** thing: whether the whole prompt is
+`/playbot`. That check happens inside the script, and only the yes-or-no leaves
+it -- the text of your prompt is never sent anywhere, written down, or included
+in what the app receives. If you would rather it did not look at all, delete
+the three lines around `grep -Eq` in
+[`hooks/notch-runner-hook.sh`](hooks/notch-runner-hook.sh); everything except
+`/playbot` keeps working.
 
 ### Why does macOS say it's from an unidentified developer?
 
