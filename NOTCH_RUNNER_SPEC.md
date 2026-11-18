@@ -331,7 +331,9 @@ Use `set -euo pipefail`, keep it idempotent, and add `--version vX.Y.Z` support.
 - Everything stays on the machine. There's no telemetry and nothing is sent anywhere except localhost.
 - Prompt text is **never** stored, and never leaves the hook script. Only `session_id`, `cwd` and
   terminal identifiers are sent. The one exception is the `/playbot` trigger: the hook tests whether
-  the whole prompt is `/playbot` and forwards only that yes-or-no, never the text.
+  the prompt contains the `NOTCH-RUNNER-PLAYBOT` marker and forwards only that yes-or-no, never the
+  text. `/playbot` must be a real command in `~/.claude/commands/`, because Claude Code handles
+  anything beginning with `/` before it becomes a prompt, so a hook never sees it.
 - The event server binds to 127.0.0.1 only and requires the token from a mode-600 file.
 - Permissions: Apple Events (optional, for exact-tab focus). No Accessibility, Input Monitoring or Screen Recording.
 

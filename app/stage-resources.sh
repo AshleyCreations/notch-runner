@@ -12,3 +12,4 @@ mkdir -p NotchRunner/Resources/game
 cp ../game/index.html NotchRunner/Resources/game/index.html
 cp ../hooks/notch-runner-hook.sh NotchRunner/Resources/notch-runner-hook.sh
 chmod +x NotchRunner/Resources/notch-runner-hook.sh
+cp ../hooks/playbot.md NotchRunner/Resources/playbot.md

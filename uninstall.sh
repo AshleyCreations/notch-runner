@@ -21,4 +21,11 @@ fi
 
 rm -rf "$HOME/.notch-runner"
 say "Removed ~/.notch-runner"
+
+# Only ours: never touch a playbot.md someone else wrote.
+CMD="$HOME/.claude/commands/playbot.md"
+if [ -f "$CMD" ] && grep -q 'NOTCH-RUNNER-PLAYBOT' "$CMD"; then
+  rm -f "$CMD"
+  say "Removed $CMD"
+fi
 say "Done. Restart Claude Code to drop the hooks."

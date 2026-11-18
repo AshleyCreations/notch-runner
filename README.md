@@ -82,9 +82,13 @@ Type `/playbot` and the island opens straight away, with nothing to wait for:
 > /playbot
 ```
 
-Claude never sees it. The hook recognises the prompt, opens the island and
-blocks the prompt from being sent, so you do not burn a turn on it. Close it
-with the **x**, **Cmd+W**, or **Esc** twice.
+Claude never answers it, and no turn is spent. `/playbot` is a real Claude Code
+command, installed at `~/.claude/commands/playbot.md`; it expands to a marker
+the hook recognises, which opens the island and then blocks the prompt before
+it reaches Claude. (It has to work this way: Claude Code handles anything
+starting with `/` itself, so a prompt hook never sees a bare `/playbot`.)
+
+Close it with the **x**, **Cmd+W**, or **Esc** twice.
 
 Your score, level and speed carry across, so this is the same run you have been
 building up while Claude works -- not a separate practice mode. There is also
@@ -92,15 +96,18 @@ building up while Claude works -- not a separate practice mode. There is also
 
 ### What the installer changes
 
-Three things, and nothing else:
+Four things, and nothing else:
 
 | Path | What happens |
 |---|---|
 | `/Applications/NotchRunner.app` | the app (`~/Applications` if `/Applications` is not writable) |
 | `~/.notch-runner/` | the hook script, plus a port file and a mode-600 token |
 | `~/.claude/settings.json` | three hook entries appended |
+| `~/.claude/commands/playbot.md` | the `/playbot` command |
 
-It never uses `sudo`, and it touches nothing else in `~/.claude`.
+It never uses `sudo`. In `~/.claude` it appends the three hook entries and adds
+that one command file -- and it will not overwrite a `playbot.md` you wrote
+yourself; it says so and leaves it alone. Uninstalling removes both.
 
 ### About the hooks
 
@@ -131,9 +138,9 @@ you are in. It never writes to stdout (which would otherwise land in Claude's
 context), and it backgrounds its own request with a one-second timeout so it
 cannot slow Claude down or block on a stopped app.
 
-It looks at your prompt for exactly **one** thing: whether the whole prompt is
-`/playbot`. That check happens inside the script, and only the yes-or-no leaves
-it -- the text of your prompt is never sent anywhere, written down, or included
+It looks at your prompt for exactly **one** thing: whether it contains the
+`/playbot` marker. That check happens inside the script, and only the yes-or-no
+leaves it -- the text of your prompt is never sent anywhere, written down, or included
 in what the app receives. If you would rather it did not look at all, delete
 the three lines around `grep -Eq` in
 [`hooks/notch-runner-hook.sh`](hooks/notch-runner-hook.sh); everything except

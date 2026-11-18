@@ -26,6 +26,7 @@ targets:
         excludes:
           - Resources/game
           - Resources/notch-runner-hook.sh
+          - Resources/playbot.md
       # A folder reference, not a group: the web view looks the page up with
       # subdirectory "game", which only works if the folder survives into the
       # bundle instead of being flattened into Resources.
@@ -33,6 +34,9 @@ targets:
         type: folder
       # install.sh copies this out of the bundle, so it has to be a resource.
       - path: NotchRunner/Resources/notch-runner-hook.sh
+        buildPhase: resources
+      # The /playbot slash command, copied into ~/.claude/commands by install.sh.
+      - path: NotchRunner/Resources/playbot.md
         buildPhase: resources
     info:
       path: Info.plist

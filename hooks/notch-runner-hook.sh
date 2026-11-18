@@ -10,12 +10,19 @@ TOKEN="$(cat "$DIR/token" 2>/dev/null)"
 INPUT="$(cat)"                                  # hook JSON from Claude Code
 TTY="$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' ')"
 
-# "/playbot" opens the island by hand, with no work for Claude to do. The
-# prompt is matched HERE and never forwarded: only the fact that it matched
-# leaves this script. A plain grep, so the common case costs nothing.
+# "/playbot" opens the island by hand, with no work for Claude to do.
+#
+# Claude Code swallows anything starting with "/" as a slash command, so the
+# prompt hook never sees a literal "/playbot". The installer puts a real
+# command at ~/.claude/commands/playbot.md which expands to the marker below,
+# and that IS delivered as a prompt. The second pattern is a fallback for the
+# marker being typed or pasted directly.
+#
+# Matched HERE and never forwarded: only the fact that it matched leaves this
+# script. A plain grep, so the common case costs nothing.
 PLAY=0
 if [ "$EVENT" = "prompt" ] &&
-   printf '%s' "$INPUT" | grep -Eq '"prompt"[[:space:]]*:[[:space:]]*"/playbot[[:space:]]*"'; then
+   printf '%s' "$INPUT" | grep -q 'NOTCH-RUNNER-PLAYBOT'; then
   EVENT="play"
   PLAY=1
 fi

@@ -51,10 +51,20 @@ mkdir -p "$HOME/.notch-runner"
 cp "$APP/Contents/Resources/notch-runner-hook.sh" "$HOME/.notch-runner/notch-runner-hook.sh"
 chmod +x "$HOME/.notch-runner/notch-runner-hook.sh"
 
-# 6. Merge our entries into ~/.claude/settings.json (backs up first, idempotent).
+# 6. The /playbot slash command. Claude Code swallows anything starting with
+#    "/" before it becomes a prompt, so this has to be a real command.
+CMD="$HOME/.claude/commands/playbot.md"
+mkdir -p "$HOME/.claude/commands"
+if [ -f "$CMD" ] && ! grep -q 'NOTCH-RUNNER-PLAYBOT' "$CMD"; then
+  say "$CMD already exists and is not ours - leaving it alone, so /playbot will not work."
+else
+  cp "$APP/Contents/Resources/playbot.md" "$CMD"
+fi
+
+# 7. Merge our entries into ~/.claude/settings.json (backs up first, idempotent).
 "$APP/Contents/MacOS/NotchRunner" --install-hooks
 
-# 7. Launch, with login item enabled by default.
+# 8. Launch, with login item enabled by default.
 open -a "$APP" --args --enable-login-item
 
 cat <<'MSG'
