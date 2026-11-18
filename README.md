@@ -26,11 +26,9 @@ on a real machine: install, play, Claude finishes, focus comes back.
 | `FocusReturner` — exact Terminal/iTerm tab | working |
 | `install.sh` / `uninstall.sh` / release workflow | working, run end to end |
 
-Not yet verified: Macs **without** a notch, external displays, and two Claude
-sessions running at once. The code paths exist and are unit-tested, but none of
-them has run on real hardware.
-
-It is also **unsigned** — see [below](#why-does-macos-say-its-from-an-unidentified-developer).
+It has also only ever run on **one machine**. Please read
+[Known issues](#known-issues) before installing — not because anything is
+known to be broken, but because a fair amount is simply untested.
 
 ## Tests
 
@@ -215,6 +213,63 @@ One known wrinkle: the hook entries are removed and every other setting is
 preserved, but the file is rewritten through a JSON serialiser, so key order
 and spacing may change even though the values do not. If you keep your dotfiles
 in git, expect a cosmetic diff.
+
+## Known issues
+
+Nothing here is known to be broken. It is the list of things that have not been
+proven, so you can judge the risk yourself rather than find out.
+
+### It has run on exactly one Mac
+
+Everything below works on an Apple Silicon MacBook with a notch, a single
+display, running macOS 26. None of these has ever been tried:
+
+| Untested | Why it might matter |
+|---|---|
+| **macOS 14 and 15** | The app targets 14.0, but has only run on 26. Window levels and `SMAppService` have both shifted across that range. |
+| **Intel Macs** | The binary is universal and built on an Intel runner, but has never been *run* on Intel. |
+| **Macs without a notch** | There is a fallback that puts the island at the top centre of the screen. That code has never executed. |
+| **External or multiple displays** | The island picks the screen with a notch, else the main one. Never tried with more than one screen. |
+| **Two Claude sessions at once** | The island should stay until the last one finishes. Unit-tested, never run for real. |
+
+If you hit any of these, an issue with your macOS version and hardware is
+genuinely useful -- that is the gap.
+
+### It is unsigned
+
+No Developer ID, no notarisation, so the installer clears the quarantine flag.
+See [the explanation above](#why-does-macos-say-its-from-an-unidentified-developer)
+for what that means and how to check the build.
+
+### The Cowork and Chat block is unverified
+
+The island is meant to stay out of Cowork and Chat sessions. That works by
+matching `CLAUDE_CODE_ENTRYPOINT`, and the values it matches are **guesses** --
+nobody has confirmed what those surfaces actually report. If one of them uses a
+different name, it will get an island anyway. The app records each surface it
+sees in `~/.notch-runner/entrypoints`; if yours is wrong, that file has the
+right answer and an issue with its contents would fix it for everyone.
+
+### Uninstalling reformats `settings.json`
+
+Removing the hooks rewrites `~/.claude/settings.json` through a JSON
+serialiser. Every setting survives intact, but key order and spacing may change.
+If you keep your dotfiles in git, expect a cosmetic diff.
+
+### `/playbot` depends on how Claude Code delivers slash commands
+
+Claude Code handles anything starting with `/` itself, so `/playbot` works by
+installing a real command and matching what the prompt hook receives. **Which
+form arrives has already changed once** between Claude Code builds -- the raw
+`/playbot` in some, the expanded command body in others. Both are matched now,
+but a future change could break it again. If `/playbot` stops working, that is
+the first place to look.
+
+### The island covers part of the menu bar
+
+By design -- it unfolds from the notch, which is in the menu bar. It only
+takes clicks where it is actually drawn, so the rest of the menu bar stays
+usable, but the middle of it is behind the island while the game is open.
 
 ## How it works
 
