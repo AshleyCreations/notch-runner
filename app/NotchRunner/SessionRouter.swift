@@ -43,22 +43,33 @@ final class SessionRouter {
 
     // MARK: entry point
 
-    /// The island is for terminal sessions. Claude Code also runs inside the
-    /// desktop app, where a strip dropping over the window you are already
-    /// looking at is noise rather than a nice surprise.
+    /// Surfaces the island should stay out of. Claude Code itself is welcome
+    /// anywhere it runs -- a terminal or the desktop app -- but Chat and Cowork
+    /// are not sessions you sit and wait on, so a strip unfolding over them is
+    /// just noise.
     ///
-    /// Positive identification rather than a denylist: a real terminal always
-    /// has a tty like `ttys003`, and the desktop app reports `??`. That also
-    /// excludes any other host we have not met yet, instead of letting it
-    /// through because its entrypoint is unfamiliar.
-    static func isTerminalSession(_ event: HookEvent) -> Bool {
-        if event.entrypoint == "claude-desktop" { return false }
-        guard let tty = event.tty, !tty.isEmpty else { return false }
-        if tty == "console" { return true }
-        let name = tty.hasPrefix("/dev/") ? String(tty.dropFirst(5)) : tty
-        guard name.hasPrefix("ttys") else { return false }
-        let digits = name.dropFirst(4)
-        return !digits.isEmpty && digits.allSatisfy(\.isNumber)
+    /// Matched on CLAUDE_CODE_ENTRYPOINT. Anything unrecognised is allowed
+    /// through rather than blocked: a new Claude Code surface should get the
+    /// island, and the cost of being wrong is a strip you can close, not a
+    /// feature that silently stops working.
+    static let blockedEntrypoints: Set<String> = [
+        "cowork", "claude-cowork",
+        "chat", "claude-chat",
+    ]
+
+    /// Entrypoints we have already logged, so the log says each one once.
+    private static var seenEntrypoints: Set<String> = []
+
+    static func shouldRoute(_ event: HookEvent) -> Bool {
+        // An explicit /playbot always plays, wherever it was typed. The player
+        // asked for it; no threshold or surface rule gets to veto that.
+        if event.event == "play" { return true }
+
+        let entry = (event.entrypoint ?? "").lowercased()
+        if !entry.isEmpty, seenEntrypoints.insert(entry).inserted {
+            NSLog("notch-runner: first event from entrypoint '\(entry)'")
+        }
+        return !blockedEntrypoints.contains(entry)
     }
 
     func handle(_ event: HookEvent) {
@@ -66,8 +77,8 @@ final class SessionRouter {
 
         // Drop everything for a session we would never open the island for,
         // rather than only the prompt: otherwise its stop would be routed and
-        // could fold an island a terminal session had opened.
-        guard Self.isTerminalSession(event) else { return }
+        // could fold an island another session had opened.
+        guard Self.shouldRoute(event) else { return }
 
         switch event.event {
         case "prompt": prompt(id, event)

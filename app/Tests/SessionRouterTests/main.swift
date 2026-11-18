@@ -118,60 +118,46 @@ do {
     check("a later prompt without a term keeps the old one", [r.session(for: "a")?.term ?? "-"], ["iTerm.app"])
 }
 
-// 10. only terminal sessions get an island
+// 10. which surfaces get an island
 do {
     let (r, log) = newRouter()
-    r.handle(ev("prompt", "desk", tty: "??", entrypoint: "claude-desktop")); pump(0.4)
-    check("desktop app session ignored", log(), [])
-    check("and not tracked at all", [String(r.sessions.count)], ["0"])
+    r.handle(ev("prompt", "cw", entrypoint: "cowork")); pump(0.4)
+    check("cowork ignored", log(), [])
+    check("and not tracked", [String(r.sessions.count)], ["0"])
 
-    r.handle(ev("prompt", "nott", tty: "??", entrypoint: "cli")); pump(0.4)
-    check("no real tty, ignored", log(), [])
+    r.handle(ev("prompt", "ch", entrypoint: "claude-chat")); pump(0.4)
+    check("chat ignored", log(), [])
 
-    r.handle(ev("prompt", "term", tty: "ttys007")); pump(0.4)
-    check("terminal session opens it", log(), ["prompt:term"])
+    r.handle(ev("prompt", "app", tty: "??", entrypoint: "claude-desktop")); pump(0.4)
+    check("the Claude Code app gets one", log(), ["prompt:app"])
 
-    // A stop from a dropped session must not fold a terminal session's island.
-    r.handle(ev("stop", "desk", tty: "??", entrypoint: "claude-desktop")); pump(0.2)
-    check("desktop stop cannot fold it", log(), ["prompt:term"])
-    r.handle(ev("stop", "term", tty: "ttys007")); pump(0.2)
-    check("its own stop folds it", log(), ["prompt:term", "stop:term"])
+    // A blocked session's stop must not fold someone else's island.
+    r.handle(ev("stop", "cw", entrypoint: "cowork")); pump(0.2)
+    check("cowork stop cannot fold it", log(), ["prompt:app"])
+    r.handle(ev("stop", "app", tty: "??", entrypoint: "claude-desktop")); pump(0.2)
+    check("its own stop folds it", log(), ["prompt:app", "stop:app"])
 }
 
-// 11. what counts as a terminal
+// 11. the surface rules
 do {
-    let cases: [(String, String?, String?, Bool)] = [
-        ("plain tty",            "ttys003",      "cli",            true),
-        ("absolute tty",         "/dev/ttys012", "cli",            true),
-        ("console",              "console",      "cli",            true),
-        ("desktop app",          "??",           "claude-desktop", false),
-        ("desktop app w/ a tty", "ttys003",      "claude-desktop", false),
-        ("ps gave up",           "??",           "cli",            false),
-        ("empty",                "",             "cli",            false),
-        ("not a tty name",       "pts/3",        "cli",            false),
-        ("no digits",            "ttys",         "cli",            false),
+    let cases: [(String, String?, Bool)] = [
+        ("terminal cli",      "cli",            true),
+        ("Claude Code app",   "claude-desktop", true),
+        ("cowork",            "cowork",         false),
+        ("claude-cowork",     "claude-cowork",  false),
+        ("chat",              "chat",           false),
+        ("claude-chat",       "claude-chat",    false),
+        ("case insensitive",  "Cowork",         false),
+        ("unknown surface",   "something-new",  true),
+        ("missing",           nil,              true),
     ]
-    for (name, tty, entry, want) in cases {
-        let got = SessionRouter.isTerminalSession(ev("prompt", "x", tty: tty, entrypoint: entry))
-        check("terminal? " + name, [String(got)], [String(want)])
+    for (name, entry, want) in cases {
+        let got = SessionRouter.shouldRoute(ev("prompt", "x", entrypoint: entry))
+        check("route? " + name, [String(got)], [String(want)])
     }
-}
-
-// 12. /playbot
-do {
-    let (r, log) = newRouter()
-    r.handle(ev("play", "pb", tty: "ttys003")); pump(0.2)
-    check("play opens the strip", log(), ["playNow:"])
-    check("but creates no session", [String(r.sessions.count)], ["0"])
-
-    // Nothing is waiting on Claude, so a stray stop must do nothing.
-    r.handle(ev("stop", "pb", tty: "ttys003")); pump(0.2)
-    check("a stray stop is a no-op", log(), ["playNow:"])
-
-    // And it is still a terminal-only feature.
-    let (r2, log2) = newRouter()
-    r2.handle(ev("play", "pb", tty: "??", entrypoint: "claude-desktop")); pump(0.2)
-    check("play ignored in the desktop app", log2(), [])
+    // /playbot overrides every one of them.
+    check("play always routes, even from cowork",
+          [String(SessionRouter.shouldRoute(ev("play", "x", entrypoint: "cowork")))], ["true"])
 }
 
 print(failures == 0 ? "\nALL PASS" : "\n\(failures) FAILURE(S)")

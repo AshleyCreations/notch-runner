@@ -12,17 +12,18 @@ TTY="$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' ')"
 
 # "/playbot" opens the island by hand, with no work for Claude to do.
 #
-# Claude Code swallows anything starting with "/" as a slash command, so the
-# prompt hook never sees a literal "/playbot". The installer puts a real
-# command at ~/.claude/commands/playbot.md which expands to the marker below,
-# and that IS delivered as a prompt. The second pattern is a fallback for the
-# marker being typed or pasted directly.
+# Both spellings, because which one arrives depends on the Claude Code build:
+# some submit the raw "/playbot" to the prompt hook and expand it afterwards,
+# others deliver the expanded body of ~/.claude/commands/playbot.md, which
+# carries the NOTCH-RUNNER-PLAYBOT marker. Matching either covers both, and
+# the command file still has to exist or Claude Code rejects "/playbot" as an
+# unknown command before any hook runs.
 #
 # Matched HERE and never forwarded: only the fact that it matched leaves this
 # script. A plain grep, so the common case costs nothing.
 PLAY=0
 if [ "$EVENT" = "prompt" ] &&
-   printf '%s' "$INPUT" | grep -q 'NOTCH-RUNNER-PLAYBOT'; then
+   printf '%s' "$INPUT" | grep -Eq '"prompt"[[:space:]]*:[[:space:]]*"/playbot[[:space:]]*"|NOTCH-RUNNER-PLAYBOT'; then
   EVENT="play"
   PLAY=1
 fi

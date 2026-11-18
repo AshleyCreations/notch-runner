@@ -69,10 +69,13 @@ guesses how long a prompt will take from its text, and the hook never sees your
 prompt. Change it under Settings -> Show after (immediately / 10s / 30s / 60s)
 if you want it sooner.
 
-**Only in a terminal.** Claude Code also runs inside the Claude desktop app,
-where dropping a strip over the window you are already looking at is noise
-rather than a nice surprise. Notch Runner only reacts to sessions with a real
-tty, so terminal sessions get the island and the desktop app is left alone.
+**Only where you are waiting on Claude Code.** Terminal sessions and the Claude
+Code desktop app both get the island. Chat and Cowork do not: those are not
+sessions you sit and watch, so a strip unfolding over them is noise. Anything
+else is allowed through, on the grounds that a new Claude Code surface should
+get the island and the cost of being wrong is a strip you can close.
+
+`/playbot` ignores both rules. If you asked for it, you get it.
 
 ### Playing without waiting for Claude
 
