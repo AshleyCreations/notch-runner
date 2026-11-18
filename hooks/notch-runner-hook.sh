@@ -37,7 +37,10 @@ if [ "$PLAY" = "1" ]; then
   # shown to the user.
   curl -s -m 1 -o /dev/null -X POST "http://127.0.0.1:$PORT/event" \
     -H "Content-Type: application/json" -H "X-NR-Token: $TOKEN" --data-binary "$PAYLOAD" >/dev/null 2>&1
-  echo "Notch Runner: island open. Esc Esc, Cmd+W or the x closes it." >&2
+  # Shown by Claude Code under "A hook blocked your prompt", which reads like a
+  # failure. Say up front that nothing was sent, so the card reads as the point
+  # rather than as something going wrong.
+  echo "Notch Runner: island open, nothing sent to Claude. Esc Esc, Cmd+W or the x closes it." >&2
   exit 2
 fi
 
