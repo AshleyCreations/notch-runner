@@ -48,6 +48,7 @@ xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
 
 # 5. Hook script.
 mkdir -p "$HOME/.notch-runner"
+chmod 700 "$HOME/.notch-runner"     # holds the event-server token; umask would leave it 755
 cp "$APP/Contents/Resources/notch-runner-hook.sh" "$HOME/.notch-runner/notch-runner-hook.sh"
 chmod +x "$HOME/.notch-runner/notch-runner-hook.sh"
 

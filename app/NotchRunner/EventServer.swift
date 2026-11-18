@@ -213,6 +213,10 @@ final class EventServer {
         let fm = FileManager.default
         try? fm.createDirectory(at: supportDir, withIntermediateDirectories: true,
                                 attributes: [.posixPermissions: 0o700])
+        // createDirectory only sets permissions on a directory it creates. If the
+        // installer got there first with a plain mkdir, umask will have left it
+        // 755, so tighten it every time rather than trusting who won the race.
+        try? fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: supportDir.path)
         guard let data = contents.data(using: .utf8) else { return }
         do {
             try data.write(to: url, options: .atomic)
