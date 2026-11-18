@@ -16,7 +16,7 @@ final class Settings {
     init() {
         d.register(defaults: [
             Key.enabled: true,
-            Key.showAfterMs: 2000,
+            Key.showAfterMs: 30_000,
             Key.takesKeyboard: true,
             Key.showOverFullScreen: false,
         ])
@@ -27,7 +27,8 @@ final class Settings {
         set { d.set(newValue, forKey: Key.enabled) }
     }
 
-    /// Only open the island if Claude is still working after this long.
+    /// Only open the island if Claude is *still* working after this long, so a
+    /// quick answer never gets one. Measured, not predicted.
     var showAfterMs: Int {
         get { d.integer(forKey: Key.showAfterMs) }
         set { d.set(newValue, forKey: Key.showAfterMs) }

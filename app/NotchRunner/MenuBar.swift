@@ -68,7 +68,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
         }
 
         let settings = NSMenu()
-        for ms in [0, 2000, 5000, 10000] {
+        for ms in [0, 10_000, 30_000, 60_000] {
             let title = ms == 0 ? "Show immediately" : "Show after \(ms / 1000)s"
             let i = add(settings, title, #selector(setShowAfter(_:)), checked: Settings.shared.showAfterMs == ms)
             i.tag = ms

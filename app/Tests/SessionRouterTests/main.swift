@@ -1,10 +1,11 @@
 import Foundation
 
 var failures = 0
-func ev(_ type: String, _ id: String, tty: String? = nil, term: String? = nil, cwd: String? = nil) -> HookEvent {
+func ev(_ type: String, _ id: String, tty: String? = "ttys003", term: String? = nil,
+        cwd: String? = nil, entrypoint: String? = "cli") -> HookEvent {
     let json = """
     {"event":"\(type)","tty":\(tty.map{"\"\($0)\""} ?? "null"),"term":\(term.map{"\"\($0)\""} ?? "null"),
-     "termSession":null,"itermSession":null,
+     "termSession":null,"itermSession":null,"entrypoint":\(entrypoint.map{"\"\($0)\""} ?? "null"),
      "hook":{"session_id":"\(id)","cwd":\(cwd.map{"\"\($0)\""} ?? "null"),"hook_event_name":null}}
     """
     return try! JSONDecoder().decode(HookEvent.self, from: Data(json.utf8))
@@ -113,8 +114,47 @@ do {
     check("terminal info retained",
           [s?.tty ?? "-", s?.term ?? "-", s?.cwd ?? "-"],
           ["ttys004", "iTerm.app", "/tmp/x"])
-    r.handle(ev("prompt", "a", tty: nil, term: nil, cwd: nil)); pump(0.1)
-    check("a later prompt without tty keeps the old one", [r.session(for: "a")?.tty ?? "-"], ["ttys004"])
+    r.handle(ev("prompt", "a", tty: "ttys004", term: nil, cwd: nil)); pump(0.1)
+    check("a later prompt without a term keeps the old one", [r.session(for: "a")?.term ?? "-"], ["iTerm.app"])
+}
+
+// 10. only terminal sessions get an island
+do {
+    let (r, log) = newRouter()
+    r.handle(ev("prompt", "desk", tty: "??", entrypoint: "claude-desktop")); pump(0.4)
+    check("desktop app session ignored", log(), [])
+    check("and not tracked at all", [String(r.sessions.count)], ["0"])
+
+    r.handle(ev("prompt", "nott", tty: "??", entrypoint: "cli")); pump(0.4)
+    check("no real tty, ignored", log(), [])
+
+    r.handle(ev("prompt", "term", tty: "ttys007")); pump(0.4)
+    check("terminal session opens it", log(), ["prompt:term"])
+
+    // A stop from a dropped session must not fold a terminal session's island.
+    r.handle(ev("stop", "desk", tty: "??", entrypoint: "claude-desktop")); pump(0.2)
+    check("desktop stop cannot fold it", log(), ["prompt:term"])
+    r.handle(ev("stop", "term", tty: "ttys007")); pump(0.2)
+    check("its own stop folds it", log(), ["prompt:term", "stop:term"])
+}
+
+// 11. what counts as a terminal
+do {
+    let cases: [(String, String?, String?, Bool)] = [
+        ("plain tty",            "ttys003",      "cli",            true),
+        ("absolute tty",         "/dev/ttys012", "cli",            true),
+        ("console",              "console",      "cli",            true),
+        ("desktop app",          "??",           "claude-desktop", false),
+        ("desktop app w/ a tty", "ttys003",      "claude-desktop", false),
+        ("ps gave up",           "??",           "cli",            false),
+        ("empty",                "",             "cli",            false),
+        ("not a tty name",       "pts/3",        "cli",            false),
+        ("no digits",            "ttys",         "cli",            false),
+    ]
+    for (name, tty, entry, want) in cases {
+        let got = SessionRouter.isTerminalSession(ev("prompt", "x", tty: tty, entrypoint: entry))
+        check("terminal? " + name, [String(got)], [String(want)])
+    }
 }
 
 print(failures == 0 ? "\nALL PASS" : "\n\(failures) FAILURE(S)")

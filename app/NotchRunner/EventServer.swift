@@ -15,6 +15,9 @@ struct HookEvent: Decodable {
     let term: String?            // TERM_PROGRAM: Apple_Terminal, iTerm.app, WarpTerminal, vscode, ghostty…
     let termSession: String?
     let itermSession: String?
+    /// CLAUDE_CODE_ENTRYPOINT: "cli" from a terminal, "claude-desktop" from the
+    /// desktop app's own sessions.
+    let entrypoint: String?
     let hook: HookPayload?
 }
 

@@ -56,8 +56,23 @@ for higher), ↓ ducks and fast-falls, Esc pauses.
 curl -fsSL https://raw.githubusercontent.com/AshleyCreations/notch-runner/main/install.sh | bash
 ```
 
-Then **restart Claude Code** and send a prompt. Anything that takes more than
-two seconds brings Bit out of the notch.
+Then **restart Claude Code** and send a prompt.
+
+### When the island actually shows up
+
+Two rules, and both are about not getting in your way.
+
+**Only after 30 seconds.** The island appears when Claude is *still* working
+half a minute in. Quick answers never show it, so you are never watching a
+strip unfold just as the reply lands. This is measured, not predicted: nothing
+guesses how long a prompt will take from its text, and the hook never sees your
+prompt. Change it under Settings -> Show after (immediately / 10s / 30s / 60s)
+if you want it sooner.
+
+**Only in a terminal.** Claude Code also runs inside the Claude desktop app,
+where dropping a strip over the window you are already looking at is noise
+rather than a nice surprise. Notch Runner only reacts to sessions with a real
+tty, so terminal sessions get the island and the desktop app is left alone.
 
 ### What the installer changes
 

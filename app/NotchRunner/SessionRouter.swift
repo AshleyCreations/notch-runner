@@ -43,8 +43,32 @@ final class SessionRouter {
 
     // MARK: entry point
 
+    /// The island is for terminal sessions. Claude Code also runs inside the
+    /// desktop app, where a strip dropping over the window you are already
+    /// looking at is noise rather than a nice surprise.
+    ///
+    /// Positive identification rather than a denylist: a real terminal always
+    /// has a tty like `ttys003`, and the desktop app reports `??`. That also
+    /// excludes any other host we have not met yet, instead of letting it
+    /// through because its entrypoint is unfamiliar.
+    static func isTerminalSession(_ event: HookEvent) -> Bool {
+        if event.entrypoint == "claude-desktop" { return false }
+        guard let tty = event.tty, !tty.isEmpty else { return false }
+        if tty == "console" { return true }
+        let name = tty.hasPrefix("/dev/") ? String(tty.dropFirst(5)) : tty
+        guard name.hasPrefix("ttys") else { return false }
+        let digits = name.dropFirst(4)
+        return !digits.isEmpty && digits.allSatisfy(\.isNumber)
+    }
+
     func handle(_ event: HookEvent) {
         let id = event.hook?.session_id ?? "unknown"
+
+        // Drop everything for a session we would never open the island for,
+        // rather than only the prompt: otherwise its stop would be routed and
+        // could fold an island a terminal session had opened.
+        guard Self.isTerminalSession(event) else { return }
+
         switch event.event {
         case "prompt": prompt(id, event)
         case "stop":   stop(id)

@@ -229,7 +229,7 @@ The goal is to land the user back on the exact window or tab the prompt came fro
 
 | Constant | Default |
 |---|---|
-| `showAfterMs` | 2000. Quick replies never show the island. |
+| `showAfterMs` | 30000. Only a response that is still going after 30s gets an island; anything quicker never shows one. |
 | `peekToGameMs` | 1450 |
 | `doneHoldMs` | 2200 |
 | `countdownSecs` | 5 |
@@ -289,7 +289,7 @@ Template icon: Bit's silhouette. Menu items:
 - **Play now**: opens the strip with a countdown, even when Claude isn't working. Fold it with Esc ×2 or the "Close" item.
 - Tokens saved: 12.4K · Best: 3.1K (read-only line)
 - **Settings…**
-  - Show after: 0 / 2 / 5 / 10 s
+  - Show after: 0 / 10 / 30 / 60 s
   - Take keyboard when the game opens
   - Show over full-screen apps
   - Launch at login (`SMAppService.mainApp`)
