@@ -13,22 +13,17 @@ https://github.com/user-attachments/assets/507854a1-22c5-4a43-a23c-3b4f9669f7a5
 
 ## Status
 
-Everything in [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) is built and has run
-on a real machine: install, play, Claude finishes, focus comes back.
+**Shipped.** Everything in [NOTCH_RUNNER_SPEC.md](NOTCH_RUNNER_SPEC.md) is
+built and has run on a real machine, end to end: install from the one-liner,
+prompt, play, Claude finishes, the strip folds away, focus lands back on the
+tab you started from, uninstall leaves nothing behind.
 
-| Piece | State |
-|---|---|
-| `game/index.html` — island UI + game | working |
-| Menu-bar app, notch panel, transparent web view | working |
-| `HookInstaller` — merge/unmerge `~/.claude/settings.json` | working, idempotent |
-| `EventServer` — localhost listener for hook events | working |
-| `SessionRouter` — multi-session state, debouncing | working |
-| `FocusReturner` — exact Terminal/iTerm tab | working |
-| `install.sh` / `uninstall.sh` / release workflow | working, run end to end |
+Install it with the [one-liner below](#install). The latest build is on the
+[releases page](https://github.com/AshleyCreations/notch-runner/releases/latest).
 
-It has also only ever run on **one machine**. Please read
-[Known issues](#known-issues) before installing — not because anything is
-known to be broken, but because a fair amount is simply untested.
+It has only ever run on **one machine**, though. Please read
+[Known issues](#known-issues) first — not because anything is known to be
+broken, but because a fair amount is simply untested.
 
 ## Tests
 
