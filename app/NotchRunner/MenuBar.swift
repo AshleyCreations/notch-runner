@@ -27,8 +27,16 @@ final class MenuBar: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = item.button {
-            // TODO: replace with Bit's silhouette as a template image in Assets.xcassets.
-            button.title = "▞"
+            // Bit's silhouette, generated from the same sprite grid the game
+            // draws. As a template image the system tints it for light and
+            // dark menu bars, so it must stay black-plus-alpha.
+            if let icon = NSImage(named: "MenuBarIcon") {
+                icon.isTemplate = true
+                icon.size = NSSize(width: 18, height: 18)
+                button.image = icon
+            } else {
+                button.title = "▞"
+            }
             button.toolTip = "Notch Runner"
         }
 
