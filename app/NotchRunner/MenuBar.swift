@@ -4,15 +4,21 @@ import AppKit
 // which is how the panel and bridge are tested before the event server exists.
 final class MenuBar: NSObject, NSMenuDelegate {
     private let item: NSStatusItem
+    private let onPlayNow: () -> Void
+    private let onClose: () -> Void
     private let onSimulatePrompt: () -> Void
     private let onSimulateStop: () -> Void
     private let onResetProgress: () -> Void
     private let onQuit: () -> Void
 
-    init(onSimulatePrompt: @escaping () -> Void,
+    init(onPlayNow: @escaping () -> Void,
+         onClose: @escaping () -> Void,
+         onSimulatePrompt: @escaping () -> Void,
          onSimulateStop: @escaping () -> Void,
          onResetProgress: @escaping () -> Void,
          onQuit: @escaping () -> Void) {
+        self.onPlayNow = onPlayNow
+        self.onClose = onClose
         self.onSimulatePrompt = onSimulatePrompt
         self.onSimulateStop = onSimulateStop
         self.onResetProgress = onResetProgress
@@ -39,6 +45,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
         menu.addItem(withTitle: "Tokens saved: \(Self.fmt(StateStore.shared.savedTokens))  ·  Best: \(Self.fmt(StateStore.shared.bestTokens))",
                      action: nil, keyEquivalent: "").isEnabled = false
+        menu.addItem(.separator())
+
+        add(menu, "Play now", #selector(playNow))
+        add(menu, "Close the island", #selector(closeIsland), key: "w")
         menu.addItem(.separator())
 
         add(menu, "Simulate prompt", #selector(simulatePrompt))
@@ -84,6 +94,8 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @objc private func toggleFullScreen() { Settings.shared.showOverFullScreen.toggle() }
     @objc private func toggleLaunchAtLogin() { Settings.shared.launchAtLogin.toggle() }
     @objc private func setShowAfter(_ sender: NSMenuItem) { Settings.shared.showAfterMs = sender.tag }
+    @objc private func playNow() { onPlayNow() }
+    @objc private func closeIsland() { onClose() }
     @objc private func simulatePrompt() { onSimulatePrompt() }
     @objc private func simulateStop() { onSimulateStop() }
     @objc private func resetProgress() { onResetProgress() }

@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.show()
 
         menuBar = MenuBar(
+            onPlayNow:        { [weak self] in self?.panel.webView.send(["type": "playNow"]) },
+            onClose:          { [weak self] in self?.panel.webView.send(["type": "close"]) },
             onSimulatePrompt: { [weak self] in self?.panel.webView.send(["type": "prompt", "sessionId": "menu"]) },
             onSimulateStop:   { [weak self] in self?.panel.webView.send(["type": "stop", "sessionId": "menu"]) },
             onResetProgress:  { [weak self] in

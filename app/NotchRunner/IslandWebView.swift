@@ -4,7 +4,8 @@ import WebKit
 // The transparent WKWebView that hosts game/index.html, plus the two-way
 // bridge described in NOTCH_RUNNER_SPEC.md §7.
 final class IslandWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelegate {
-    var onIslandState: ((String, Bool) -> Void)?
+    var onIslandState: ((String, CGSize, Bool) -> Void)?
+    var onClosed: (() -> Void)?
     var onWantsKeyboard: (() -> Void)?
     var onReturnFocus: ((String?) -> Void)?
 
@@ -60,7 +61,9 @@ final class IslandWebView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
 
         case "island":
             let state = body["state"] as? String ?? "idle"
-            onIslandState?(state, body["interactive"] as? Bool ?? false)
+            let size = CGSize(width: body["width"] as? Double ?? 186,
+                              height: body["height"] as? Double ?? 32)
+            onIslandState?(state, size, body["interactive"] as? Bool ?? false)
 
         case "wantsKeyboard":
             onWantsKeyboard?()

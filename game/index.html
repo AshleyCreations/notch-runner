@@ -178,6 +178,17 @@ function onStop(){
   setIsland('done');
   later(()=>{setIsland('idle');phase='ready';post({type:'returnFocus',sessionId});},CONFIG.doneHoldMs);
 }
+let escArmed=false;
+// Dismissed by hand: pause, keep the score, fold straight to idle. The session
+// may still be working, so phase goes back to ready and a later stop is a no-op.
+function onClose(){
+  if(islandState==='idle')return;
+  clearTimers();escArmed=false;
+  pause();saveState();
+  phase='ready';
+  setIsland('idle');
+  post({type:'returnFocus',sessionId});
+}
 function onReset(){clearTimers();phase='ready';keepSaved=0;best=0;everPlayed=false;newGame();setIsland('idle');saveState();}
 
 /* ============================================================
@@ -235,7 +246,16 @@ cv.addEventListener('pointerdown',e=>{e.preventDefault();post({type:'wantsKeyboa
 addEventListener('pointerup',release);
 addEventListener('keydown',e=>{
   if(!inGame())return;
-  if(e.key==='Escape'){e.preventDefault();if(g.state==='paused')resume();else pause();return;}
+  // Cmd+W folds the island away. The menu-bar item can be underneath the
+  // island itself, so there has to be a way out from the keyboard.
+  if((e.key==='w'||e.key==='W')&&e.metaKey){e.preventDefault();onClose();return;}
+  if(e.key==='Escape'){
+    e.preventDefault();
+    // Esc pauses; Esc again while already paused folds it away.
+    if(g.state==='paused'){if(escArmed){onClose();return;}resume();}
+    else{pause();escArmed=true;later(()=>{escArmed=false;},1800);}
+    return;
+  }
   if((e.code==='Space'||e.code==='ArrowUp')&&!e.repeat){e.preventDefault();press();}
   if(e.code==='ArrowDown'){e.preventDefault();g.ducking=true;}
 });
@@ -338,11 +358,11 @@ function draw(){
     text('Running again in '+Math.max(1,Math.ceil(g.cd/60))+' · click to go now',mx,my+10,'#8b8880','500 10px '+UI);
   }else if(g.state==='paused'){
     text('Paused',mx,my-6,'#f2f1ec','500 11px '+UI);
-    text('Esc or click to resume',mx,my+10,'#8b8880','500 10px '+UI);
+    text('Esc again to close  ·  click to resume',mx,my+10,'#8b8880','500 10px '+UI);
   }else if(g.state==='idle'){
     text('Click or press space to play  '+MOOD.idle,mx,my,'#f2f1ec','500 11px '+UI);
   }else if(g.flash>0){c.globalAlpha=Math.min(1,g.flash/30);text(g.flashText,mx,my,'#f5b841','500 11px '+UI);c.globalAlpha=1;}
-  if(g.state!=='run')text('space jump · hold = higher · ↓ duck / fast-fall · esc pause',mx,my+34,'#5b5953');
+  if(g.state!=='run')text('space jump · hold = higher · ↓ duck / fast-fall · esc pause · ⌘W close',mx,my+34,'#5b5953');
 }
 
 /* ============================================================
@@ -369,6 +389,11 @@ window.NotchRunner={
     else if(e.type==='restore')restore(e.state);
     else if(e.type==='config')Object.assign(CONFIG,e.config||{});
     else if(e.type==='pause')pause();
+    else if(e.type==='close')onClose();
+    else if(e.type==='playNow'){clearTimers();phase='working';t0=performance.now();
+      $('label').textContent='Practice run';$('meta').textContent='';
+      setIsland('game');onStripOpen();
+      clockT=setInterval(()=>{$('meta').textContent=Math.floor((performance.now()-t0)/1000)+'s';},250);}
   },
   state(){return{phase,island:islandState,game:g.state,...snapshot()};},
 };
