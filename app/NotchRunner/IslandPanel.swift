@@ -13,9 +13,12 @@ final class IslandPanel: NSPanel {
     let webView: IslandWebView
     private var islandSize = IslandPanel.idleSize
     private var pendingShrink: DispatchWorkItem?
+    private let scrim: Scrim
 
     init() {
         webView = IslandWebView()
+        // One level below the island, so the island stays above the dim.
+        scrim = Scrim(level: NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow))))
         super.init(
             contentRect: NSRect(origin: .zero, size: Self.idleSize),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -33,10 +36,18 @@ final class IslandPanel: NSPanel {
         ignoresMouseEvents = true   // idle: never block the menu bar or apps below
 
         contentView = webView
-        webView.onIslandState = { [weak self] _, size, interactive in
+        webView.onIslandState = { [weak self] state, size, interactive in
             guard let self else { return }
             self.ignoresMouseEvents = !interactive
             self.resize(to: size)
+
+            // Only the game strip earns a scrim: peek and done are brief, and
+            // dimming the screen for them would just flicker.
+            if state == "game", let screen = Self.targetScreen() {
+                self.scrim.show(on: screen)
+            } else {
+                self.scrim.hide()
+            }
         }
         // onReturnFocus is owned by AppDelegate: it needs the SessionRouter to
         // turn a session id into the terminal to activate.
