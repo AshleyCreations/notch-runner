@@ -58,6 +58,17 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
 @keyframes flow{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.island,.mini{transition:none}.dots b,.glow::before,.glow::after{animation:none}}
 
+/* Close button: the visible way back to the notch. Only in game state, which
+   is the one that sticks around; peek and done fold on their own. */
+.close{position:absolute;right:13px;bottom:6px;width:22px;height:22px;z-index:2;
+  border:0;border-radius:50%;padding:0;margin:0;cursor:pointer;
+  background:rgba(255,255,255,.08);color:var(--muted);
+  font:600 11px var(--ui);line-height:22px;text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .25s,background .15s,color .15s}
+.island.game .close{opacity:1;pointer-events:auto;transition-delay:.3s}
+.close:hover{background:rgba(255,255,255,.2);color:var(--fg)}
+.close:active{background:rgba(255,255,255,.28)}
+
 /* Dev harness (browser only) */
 .harness{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:16px;font:13px var(--ui)}
 .harness button{font:500 13px var(--ui);color:#ecebe6;background:#1b1b19;border:1px solid #2a2926;border-radius:8px;padding:7px 12px;cursor:pointer}
@@ -74,6 +85,8 @@ body.dev{background:radial-gradient(120% 90% at 20% 10%,#4a3a33,transparent 60%)
   </div>
   <canvas id="cv" width="904" height="256"></canvas>
   <div class="glow" aria-hidden="true"></div>
+  <button class="close" id="close" type="button" tabindex="-1"
+          aria-label="Close and go back to the notch" title="Close (⌘W)">&#10005;</button>
 </div>
 
 <script>
@@ -243,6 +256,8 @@ function press(){
 function release(){g.holding=false;}
 
 cv.addEventListener('pointerdown',e=>{e.preventDefault();post({type:'wantsKeyboard'});press();});
+$('close').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();onClose();});
+$('close').addEventListener('pointerdown',e=>e.stopPropagation());
 addEventListener('pointerup',release);
 addEventListener('keydown',e=>{
   if(!inGame())return;
